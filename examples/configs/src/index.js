@@ -65,6 +65,7 @@ import { maynard2021 } from './view-configs/spatial-beta/spatialdata-maynard_202
 import { sdataMerfishConfig } from './view-configs/spatial-beta/spatialdata-merfish.js';
 import { sdataXeniumConfig } from './view-configs/spatial-beta/spatialdata-xenium_rep1_io.js';
 import { spatialdataBlobsConfig } from './view-configs/spatial-beta/spatialdata-blobs.js';
+import { spatialdataPaduaKidneyXeniumConfig } from './view-configs/spatial-beta/spatialdata-padua-kidney-xenium.js';
 
 import exemplarSmallCellsAdata from './json-fixtures/exemplar-small/exemplar-001.crop.cells.adata.json';
 import exemplarSmallImageOmeZarr from './json-fixtures/exemplar-small/exemplar-001.crop.image.ome.json';
@@ -166,6 +167,7 @@ export const configs = {
   empty: emptyConfig,
   'sdata-merfish': sdataMerfishConfig,
   'sdata-xenium_rep1_io': sdataXeniumConfig,
+  'spatialdata-padua-kidney-xenium': spatialdataPaduaKidneyXeniumConfig,
 
   // Multi-level coordination with spatialBeta view:
   'blin-2019-2': blinOop2019,
@@ -254,3 +256,5 @@ export const configPages = {
   'kpmp-aug-2025': kpmpAug2025Component,
   'hubmap-heart': hubmapHeartComponent,
 };
+
+export { spatialdataPaduaKidneyXeniumConfig };
