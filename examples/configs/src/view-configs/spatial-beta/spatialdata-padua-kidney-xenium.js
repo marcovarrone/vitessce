@@ -19,7 +19,7 @@ function generatePaduaKidneyXeniumConfig() {
   const vc = new VitessceConfig({
     schemaVersion: '1.0.18',
     name: 'Padua SpatialData — Kidney Xenium (profile)',
-    description: 'H&E + IF, cell/nucleus labels and boundaries, UMAP, obs sets (level1/level2), dot plot.',
+    description: 'H&E + IF, cell/nucleus labels and boundaries, transcript points, UMAP, obs sets (level1/level2), dot plot.',
   });
 
   const coordinationValues = {
@@ -99,6 +99,23 @@ function generatePaduaKidneyXeniumConfig() {
     .addFile(segOpts('labels/nucleus_labels', 'nucleus-labels'))
     .addFile(segOpts('shapes/cell_boundaries', 'cell-boundaries'))
     .addFile(segOpts('shapes/nucleus_boundaries', 'nucleus-boundaries'));
+
+  /** Per-molecule transcript locations (SpatialData Points → parquet under points/transcripts). */
+  dataset = dataset.addFile({
+    fileType: FileType.SPATIALDATA_ZARR,
+    url: sdataUrl,
+    coordinationValues: {
+      obsType: 'point',
+      featureType: 'gene',
+      featureValueType: 'expression',
+    },
+    options: {
+      obsPoints: {
+        path: 'points/transcripts_with_morton_codes',
+      },
+      coordinateSystem: 'global',
+    },
+  });
 
   dataset = dataset.addFile({
     url: ifImageUrl,
@@ -284,6 +301,16 @@ function generatePaduaKidneyXeniumConfig() {
       },
     ]),
   }, { scopePrefix: getInitialCoordinationScopePrefix('A', 'obsSegmentations') });
+
+  vc.linkViewsByObject([spatialView, lcView], {
+    spatialTargetZ: null,
+    pointLayer: CL([
+      {
+        obsType: 'point',
+        obsHighlight: null,
+      },
+    ]),
+  }, { scopePrefix: getInitialCoordinationScopePrefix('A', 'obsPoints') });
 
   // 12x12 grid: spatial | (layer ctrl / obs sets) | (UMAP / dot plot)
   vc.layout(hconcat(
