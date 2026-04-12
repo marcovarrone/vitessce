@@ -242,13 +242,16 @@ export default class SpatialDataTableSource extends AnnDataSource {
       });
     }
 
-    let parquetBytes = await getter(`/${parquetPath}`);
-    if (!parquetBytes) {
-      // We have not yet determined if this is a directory or a single file.
-
-      // This may be a directory with multiple parts.
-      const part0Path = `${parquetPath}/part.${partIndex ?? 0}.parquet`;
-      parquetBytes = await getter(`/${part0Path}`);
+    let parquetBytes;
+    if (partIndex !== undefined) {
+      parquetBytes = await getter(`/${parquetPath}/part.${partIndex}.parquet`);
+    } else {
+      // Prefer multipart layout first because SpatialData points are often stored
+      // under .../points.parquet/part.*.parquet with no object at .../points.parquet.
+      parquetBytes = await getter(`/${parquetPath}/part.0.parquet`);
+      if (!parquetBytes) {
+        parquetBytes = await getter(`/${parquetPath}`);
+      }
     }
 
     return parquetBytes;
@@ -274,17 +277,27 @@ export default class SpatialDataTableSource extends AnnDataSource {
     const getRange = createGetRange(store);
     // Step 1: Fetch last 8 bytes to get footer length and magic number
     const TAIL_LENGTH = 8;
-    let partZeroPath = parquetPath;
-    // Case 1: Parquet file (or still unknown if file vs. directory).
-    let tailBytes = await getRange(`/${partZeroPath}`, {
-      suffixLength: TAIL_LENGTH,
-    });
-    // We already know this is a directory, so we skip the single-file path altogether.
-    // Case 2: Rather than a single file, this may be a directory with multiple parts.
-    partZeroPath = `${parquetPath}/part.${partIndex ?? 0}.parquet`;
-    tailBytes = await getRange(`/${partZeroPath}`, {
-      suffixLength: TAIL_LENGTH,
-    });
+    let partZeroPath;
+    let tailBytes;
+    if (partIndex !== undefined) {
+      partZeroPath = `${parquetPath}/part.${partIndex}.parquet`;
+      tailBytes = await getRange(`/${partZeroPath}`, {
+        suffixLength: TAIL_LENGTH,
+      });
+    } else {
+      // Prefer multipart layout first because SpatialData points are often stored
+      // under .../points.parquet/part.*.parquet with no object at .../points.parquet.
+      partZeroPath = `${parquetPath}/part.0.parquet`;
+      tailBytes = await getRange(`/${partZeroPath}`, {
+        suffixLength: TAIL_LENGTH,
+      });
+      if (!tailBytes) {
+        partZeroPath = parquetPath;
+        tailBytes = await getRange(`/${partZeroPath}`, {
+          suffixLength: TAIL_LENGTH,
+        });
+      }
+    }
 
     if (!tailBytes || tailBytes.length < TAIL_LENGTH) {
       // TODO: throw custom error type to indicate no part was found to caller?

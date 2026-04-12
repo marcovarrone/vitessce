@@ -79,14 +79,15 @@ async function _loadParquetBytes({ queryClient, store }, parquetPath, rangeQuery
       }
 
       let parquetBytes;
-      if (partIndex === undefined) {
-        // Part index is necessarily undefined for single-file queries.
-        parquetBytes = await getter(`/${parquetPath}`);
-      }
-      if (!parquetBytes) {
-        // This may be a directory with multiple parts.
-        const part0Path = `${parquetPath}/part.${partIndex ?? 0}.parquet`;
-        parquetBytes = await getter(`/${part0Path}`);
+      if (partIndex !== undefined) {
+        parquetBytes = await getter(`/${parquetPath}/part.${partIndex}.parquet`);
+      } else {
+        // Prefer multipart layout first because SpatialData points are often stored
+        // under .../points.parquet/part.*.parquet with no object at .../points.parquet.
+        parquetBytes = await getter(`/${parquetPath}/part.0.parquet`);
+        if (!parquetBytes) {
+          parquetBytes = await getter(`/${parquetPath}`);
+        }
       }
       return parquetBytes;
     },
@@ -104,19 +105,26 @@ async function _loadParquetSchemaBytes({ queryClient, store }, parquetPath, part
 
       // Step 1: Fetch last 8 bytes to get footer length and magic number
       const TAIL_LENGTH = 8;
-      // Case 1: single file.
-      let partZeroPath = parquetPath;
-
-      // TODO: use _loadParquetBytes here and below instead?
-      let tailBytes = await getRange(`/${partZeroPath}`, {
-        suffixLength: TAIL_LENGTH,
-      });
-      if (!tailBytes) {
-        // Case 2: Rather than a single file, this may be a directory with multiple parts.
-        partZeroPath = `${parquetPath}/part.${partIndex ?? 0}.parquet`;
+      let partZeroPath;
+      let tailBytes;
+      if (partIndex !== undefined) {
+        partZeroPath = `${parquetPath}/part.${partIndex}.parquet`;
         tailBytes = await getRange(`/${partZeroPath}`, {
           suffixLength: TAIL_LENGTH,
         });
+      } else {
+        // Prefer multipart layout first because SpatialData points are often stored
+        // under .../points.parquet/part.*.parquet with no object at .../points.parquet.
+        partZeroPath = `${parquetPath}/part.0.parquet`;
+        tailBytes = await getRange(`/${partZeroPath}`, {
+          suffixLength: TAIL_LENGTH,
+        });
+        if (!tailBytes) {
+          partZeroPath = parquetPath;
+          tailBytes = await getRange(`/${partZeroPath}`, {
+            suffixLength: TAIL_LENGTH,
+          });
+        }
       }
 
       if (!tailBytes || tailBytes.length < TAIL_LENGTH) {
