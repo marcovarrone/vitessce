@@ -53,6 +53,7 @@ vi.mock('@vitessce/sets-utils', async (importOriginal) => {
 });
 
 it('encodes a new lasso selection once, without an intermediate update using the old selection', () => {
+  // Start from feature value coloring: a lasso switches the encoding to set selection.
   state.index = Array.from({ length: 65536 }, (_, i) => `cell-${i}`);
   state.embedding = {
     shape: [2, state.index.length],
@@ -80,7 +81,7 @@ it('encodes a new lasso selection once, without an intermediate update using the
     obsSetSelection: [['Types', 'All']],
     additionalObsSets: null,
     obsSetColor: [{ path: ['Types', 'All'], color: [0, 0, 255] }],
-    obsColorEncoding: 'cellSetSelection',
+    obsColorEncoding: 'geneSelection',
   };
   state.setters = Object.fromEntries([
     'AdditionalObsSets', 'ObsSetSelection', 'ObsSetColor', 'ObsColorEncoding',
@@ -115,6 +116,14 @@ it('encodes a new lasso selection once, without an intermediate update using the
   expect(renderedColorIndices.every(colorIndices => (
     colorIndices === initialColorIndices || colorIndices === finalColorIndices
   ))).toBe(true);
+
+  // The encoding switches in the same render as the colors. Switching it first
+  // would color every cell by the previous selection (e.g. cell type labels).
+  Scatterplot.mock.calls.forEach(([plot]) => {
+    expect(plot.cellColorEncoding).toEqual(
+      plot.obsColorIndices === finalColorIndices ? 'cellSetSelection' : 'geneSelection',
+    );
+  });
 
   // The loading indicator stays up while the previous colors are shown,
   // and clears in the render that shows the new ones.

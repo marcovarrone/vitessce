@@ -323,17 +323,21 @@ export function EmbeddingScatterplotSubscriber(props) {
   // initiated the change paints immediately — and re-render this view afterwards.
   // The urgent render sees the previous values, so the memos below keep their
   // cached results and cost nothing in that first commit.
-  // A lasso selection updates the additional sets, selection and colors at once,
-  // so they are deferred as one snapshot. Deferring them separately would re-encode
-  // every observation twice: first with the new sets but the previous selection.
+  // A lasso selection updates the additional sets, selection, colors and color
+  // encoding at once, so they are deferred as one snapshot. Deferring them
+  // separately would re-encode every observation twice, first with the new sets
+  // but the previous selection. And if the encoding switched first (from feature
+  // values to set selection), every cell would briefly show the previous
+  // selection's colors before only the new selection is colored.
   const cellSetsSnapshot = useMemo(() => ({
-    additionalCellSets, cellSetSelection, cellSetColor,
-  }), [additionalCellSets, cellSetSelection, cellSetColor]);
+    additionalCellSets, cellSetSelection, cellSetColor, cellColorEncoding,
+  }), [additionalCellSets, cellSetSelection, cellSetColor, cellColorEncoding]);
   const deferredCellSetsSnapshot = useDeferredValue(cellSetsSnapshot);
   const {
     additionalCellSets: deferredAdditionalCellSets,
     cellSetSelection: deferredCellSetSelection,
     cellSetColor: deferredCellSetColor,
+    cellColorEncoding: deferredCellColorEncoding,
   } = deferredCellSetsSnapshot;
   // Until the deferred render catches up, the points still show the previous
   // colors. Keep the loading indicator up so a lasso selection does not look
@@ -692,7 +696,7 @@ export function EmbeddingScatterplotSubscriber(props) {
         setCellHighlight={setCellHighlight}
         cellRadius={cellRadius}
         cellOpacity={cellOpacity}
-        cellColorEncoding={cellColorEncoding}
+        cellColorEncoding={deferredCellColorEncoding}
         geneExpressionColormap={geneExpressionColormap}
         geneExpressionColormapRange={geneExpressionColormapRange}
         setComponentHover={() => {
@@ -742,7 +746,7 @@ export function EmbeddingScatterplotSubscriber(props) {
         theme={theme}
         featureType={featureType}
         featureValueType={featureValueType}
-        obsColorEncoding={cellColorEncoding}
+        obsColorEncoding={deferredCellColorEncoding}
         featureSelection={geneSelection}
         featureLabelsMap={featureLabelsMap}
         featureValueColormap={geneExpressionColormap}
