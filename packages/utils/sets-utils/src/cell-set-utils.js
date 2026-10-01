@@ -4,7 +4,9 @@ import { isNil, isEqual, range } from 'lodash-es';
 import { featureCollection as turfFeatureCollection, point as turfPoint } from '@turf/helpers';
 import { centroid } from '@turf/centroid';
 import concaveman from 'concaveman';
-import { getDefaultColor, PALETTE, MISSING_VALUE_PLACEHOLDER } from '@vitessce/utils';
+import {
+  getDefaultColor, getObsPositions, PALETTE, MISSING_VALUE_PLACEHOLDER,
+} from '@vitessce/utils';
 import {
   HIERARCHICAL_SCHEMAS,
 } from './constants.js';
@@ -712,10 +714,22 @@ export function treeToColorIndicesArray(
       ? treeFindNodeByNamePath(currTree, setNamePath)
       : null;
     if (node) {
+      const nodeSet = nodeToSet(node);
+      // Lasso selections carry the positions found by the hit test. Their
+      // confidence values are all null, so each member gets probability 1.
+      const positions = getObsPositions(nodeSet, obsIndex);
+      if (positions) {
+        for (let j = 0; j < positions.length; j += 1) {
+          colorIndices[positions[j]] = i + 1;
+          if (colorProbs !== null) {
+            colorProbs[positions[j]] = 1;
+          }
+        }
+        return;
+      }
       if (obsIndexMap === null) {
         obsIndexMap = getObsIndexMap(obsIndex);
       }
-      const nodeSet = nodeToSet(node);
       nodeSet.forEach(([cellId, prob]) => {
         const obsI = obsIndexMap.get(cellId);
         if (obsI !== undefined) {

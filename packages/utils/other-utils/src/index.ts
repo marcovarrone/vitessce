@@ -53,3 +53,4 @@ export {
   filterValidExpressionArrays,
 } from './expr.js';
 export { getAnnotationFrameCoordinationValues } from './annotation.js';
+export { setObsPositions, getObsPositions, copyObsPositions } from './obs-positions.js';

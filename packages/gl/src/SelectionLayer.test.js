@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { quadtree } from 'd3-quadtree';
+import { getObsPositions } from '@vitessce/utils';
 import SelectionLayer from './SelectionLayer.js';
 
 function makeObsLayer(points) {
@@ -69,6 +70,17 @@ describe('SelectionLayer polygon selection', () => {
     expect(inside.onSelect).toHaveBeenCalledWith(['cell-0']);
     expect(outside.onSelect).toHaveBeenCalledWith([]);
     expect(missing.onSelect).toHaveBeenCalledWith([]);
+  });
+
+  it('records the positions of the selected observations for the color encoding', () => {
+    const obsLayer = makeObsLayer([[5, 5], [1, 1], [9, 9], [1, 0]]);
+    const layer = new SelectionLayer({ id: 'test', obsLayers: [obsLayer] });
+    // eslint-disable-next-line no-underscore-dangle
+    layer._selectPolygonObjects([[[0, 0], [2, 0], [2, 2], [0, 2], [0, 0]]]);
+    const [selectedIds] = obsLayer.onSelect.mock.calls[0];
+    const positions = getObsPositions(selectedIds, obsLayer.obsIndex);
+    expect(Array.from(positions, i => obsLayer.obsIndex[i])).toEqual(selectedIds);
+    expect(new Set(positions)).toEqual(new Set([1, 3]));
   });
 
   it('selects over 50,000 observations without a multi-second hit test', () => {

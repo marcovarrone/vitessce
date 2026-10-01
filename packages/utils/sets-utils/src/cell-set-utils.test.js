@@ -1,7 +1,7 @@
 /* eslint-disable no-underscore-dangle */
 import { describe, it, expect } from 'vitest';
 import { cloneDeep } from 'lodash-es';
-import { MISSING_VALUE_PLACEHOLDER } from '@vitessce/utils';
+import { MISSING_VALUE_PLACEHOLDER, setObsPositions } from '@vitessce/utils';
 
 import {
   nodeToRenderProps,
@@ -28,6 +28,7 @@ import {
   treeToMembershipMap,
 } from './cell-set-utils.js';
 import { codesToCellSetsTree } from './CellSetsZarrLoader.js';
+import { setObsSelection } from './utils.js';
 
 import {
   levelTwoNodeLeaf,
@@ -425,6 +426,32 @@ describe('Hierarchical sets cell-set-utils', () => {
       expect(Array.from(colorIndices)).toEqual([1, 1, 1, 0]);
       // Observations outside any scored set default to full confidence.
       expect(Array.from(colorProbs)).toEqual([1, 0.5, 0, 1]);
+    });
+
+    it('treeToColorIndicesArray uses positions recorded for a lasso selection', () => {
+      const selectedIds = ['cell_6', 'cell_2'];
+      setObsPositions(selectedIds, obsIndex, [5, 1]);
+      let additionalSets;
+      let selection;
+      let colors;
+      setObsSelection(
+        selectedIds, null, setColor,
+        (v) => { selection = v; }, (v) => { additionalSets = v; }, (v) => { colors = v; }, () => {},
+      );
+      const merged = { ...tree, tree: [...tree.tree, ...additionalSets.tree] };
+      const paths = [PERICYTES, ...selection];
+      const fromPositions = treeToColorIndicesArray(merged, paths, colors, obsIndex, 'light');
+      // The same IDs without recorded positions go through the ID lookup.
+      const fromIds = treeToColorIndicesArray(
+        cloneDeep(merged), paths, colors, obsIndex, 'light',
+      );
+      expect(Array.from(fromPositions.colorIndices)).toEqual([1, 2, 1, 0, 0, 2, 0]);
+      expect(fromPositions).toEqual(fromIds);
+      // Positions recorded for another observation index are ignored.
+      const otherIndex = [...obsIndex].reverse();
+      expect(Array.from(
+        treeToColorIndicesArray(merged, paths, colors, otherIndex, 'light').colorIndices,
+      )).toEqual([0, 2, 0, 0, 1, 2, 1]);
     });
 
     it('treeToColorIndicesArray keeps colors aligned when a path is absent', () => {

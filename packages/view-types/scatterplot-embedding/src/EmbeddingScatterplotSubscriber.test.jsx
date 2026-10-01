@@ -6,10 +6,15 @@ import { Scatterplot } from '@vitessce/scatterplot';
 import { EmbeddingScatterplotSubscriber } from './EmbeddingScatterplotSubscriber.js';
 
 const state = vi.hoisted(() => ({
-  values: {}, setters: {}, index: [], embedding: null, sets: null,
+  values: {},
+  setters: {},
+  index: [],
+  embedding: null,
+  sets: null,
+  TitleInfo: vi.fn(({ children }) => children),
 }));
 vi.mock('@vitessce/vit-s', () => ({
-  TitleInfo: ({ children }) => children,
+  TitleInfo: state.TitleInfo,
   useReady: () => true,
   useUrls: () => [],
   useDeckCanvasSize: () => [0, 0, null],
@@ -88,6 +93,7 @@ it('encodes a new lasso selection once, without an intermediate update using the
   const currentSelect = Scatterplot.mock.lastCall[0].setCellSelection;
   treeToColorIndicesArray.mockClear();
   Scatterplot.mockClear();
+  state.TitleInfo.mockClear();
 
   act(() => {
     // The same callback the selection layer calls after its hit test.
@@ -109,4 +115,12 @@ it('encodes a new lasso selection once, without an intermediate update using the
   expect(renderedColorIndices.every(colorIndices => (
     colorIndices === initialColorIndices || colorIndices === finalColorIndices
   ))).toBe(true);
+
+  // The loading indicator stays up while the previous colors are shown,
+  // and clears in the render that shows the new ones.
+  const renderedIsReady = state.TitleInfo.mock.calls.map(([titleInfo]) => titleInfo.isReady);
+  expect(renderedIsReady.length).toEqual(renderedColorIndices.length);
+  renderedColorIndices.forEach((colorIndices, i) => {
+    expect(renderedIsReady[i]).toBe(colorIndices === finalColorIndices);
+  });
 });

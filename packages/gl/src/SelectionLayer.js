@@ -9,6 +9,7 @@ import { ScatterplotLayer } from '@deck.gl/layers';
 import { SELECTION_TYPE } from 'nebula.gl';
 import { EditableGeoJsonLayer } from '@nebula.gl/layers';
 import { DrawPolygonByDraggingMode, ViewMode } from '@nebula.gl/edit-modes';
+import { setObsPositions } from '@vitessce/utils';
 import { runSelectionWithBusySignal } from './selection-busy.js';
 
 const EDIT_TYPE_ADD = 'addFeature';
@@ -105,6 +106,7 @@ export default class SelectionLayer extends CompositeLayer {
       // Create an array to store the results.
       // Clear the array before checking each new layer.
       const pickingIds = [];
+      const pickingPositions = [];
 
       // It is possible for a layer to not have an obsQuadTree,
       // for example if the layer is a segmentation bitmask without associated
@@ -124,6 +126,7 @@ export default class SelectionLayer extends CompositeLayer {
             const [x, y] = getObsCoords(current.data);
             if (booleanPointInPolygon([x, y], selectedPolygon)) {
               pickingIds.push(obsIndex[current.data]);
+              pickingPositions.push(current.data);
             }
             current = current.next;
           }
@@ -133,6 +136,9 @@ export default class SelectionLayer extends CompositeLayer {
         // We want to visit the children of this node.
         return false;
       });
+      // The positions are already known here, so record them for the color
+      // encoding instead of having it look up every selected ID again.
+      setObsPositions(pickingIds, obsIndex, pickingPositions);
       layerOnSelect(pickingIds);
     });
   }

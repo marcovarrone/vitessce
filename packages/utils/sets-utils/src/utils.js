@@ -1,6 +1,6 @@
 import tinycolor from 'tinycolor2';
 import { isEqual } from 'lodash-es';
-import { PALETTE } from '@vitessce/utils';
+import { PALETTE, copyObsPositions } from '@vitessce/utils';
 import {
   SETS_DATATYPE_OBS,
   HIERARCHICAL_SCHEMAS,
@@ -106,13 +106,17 @@ export function setObsSelection(cellSelection, additionalCellSets, cellSetColor,
   };
 
   const nextName = getNextNumberedNodeName(selectionsLevelZeroNode?.children, prefix, suffix);
+  const nextSet = cellSelection.map(d => [d, null]);
+  // Keep any positions recorded by the hit test, so the new set can be
+  // color-encoded without looking up each ID again.
+  copyObsPositions(cellSelection, nextSet);
 
   let colorIndex = 0;
   if (selectionsLevelZeroNode) {
     colorIndex = selectionsLevelZeroNode.children.length;
     selectionsLevelZeroNode.children.push({
       name: nextName,
-      set: cellSelection.map(d => [d, null]),
+      set: nextSet,
     });
   } else {
     nextAdditionalCellSets.tree.push({
@@ -120,7 +124,7 @@ export function setObsSelection(cellSelection, additionalCellSets, cellSetColor,
       children: [
         {
           name: nextName,
-          set: cellSelection.map(d => [d, null]),
+          set: nextSet,
         },
       ],
     });

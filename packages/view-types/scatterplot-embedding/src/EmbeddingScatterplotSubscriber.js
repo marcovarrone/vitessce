@@ -329,11 +329,16 @@ export function EmbeddingScatterplotSubscriber(props) {
   const cellSetsSnapshot = useMemo(() => ({
     additionalCellSets, cellSetSelection, cellSetColor,
   }), [additionalCellSets, cellSetSelection, cellSetColor]);
+  const deferredCellSetsSnapshot = useDeferredValue(cellSetsSnapshot);
   const {
     additionalCellSets: deferredAdditionalCellSets,
     cellSetSelection: deferredCellSetSelection,
     cellSetColor: deferredCellSetColor,
-  } = useDeferredValue(cellSetsSnapshot);
+  } = deferredCellSetsSnapshot;
+  // Until the deferred render catches up, the points still show the previous
+  // colors. Keep the loading indicator up so a lasso selection does not look
+  // finished before its cells are colored.
+  const isRecolorPending = deferredCellSetsSnapshot !== cellSetsSnapshot;
   const deferredSampleSetSelection = useDeferredValue(sampleSetSelection);
 
   const mergedCellSets = useMemo(() => mergeObsSets(
@@ -621,7 +626,7 @@ export function EmbeddingScatterplotSubscriber(props) {
       removeGridComponent={removeGridComponent}
       urls={urls}
       theme={theme}
-      isReady={isReady && !isSelectionPending}
+      isReady={isReady && !isSelectionPending && !isRecolorPending}
       helpText={helpText}
       errors={errors}
       options={(
