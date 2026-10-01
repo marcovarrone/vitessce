@@ -3,14 +3,13 @@
 // File adopted from nebula.gl's SelectionLayer
 // https://github.com/uber/nebula.gl/blob/8e9c2ec8d7cf4ca7050909ed826eb847d5e2cd9c/modules/layers/src/layers/selection-layer.js
 import { CompositeLayer } from 'deck.gl';
-import { polygon as turfPolygon } from '@turf/helpers';
-import { booleanPointInPolygon } from '@turf/boolean-point-in-polygon';
 import { ScatterplotLayer } from '@deck.gl/layers';
 import { SELECTION_TYPE } from 'nebula.gl';
 import { EditableGeoJsonLayer } from '@nebula.gl/layers';
 import { DrawPolygonByDraggingMode, ViewMode } from '@nebula.gl/edit-modes';
 import { setObsPositions } from '@vitessce/utils';
 import { runSelectionWithBusySignal } from './selection-busy.js';
+import { getRingsBounds, createPointInPolygonTest } from './point-in-polygon.js';
 
 const EDIT_TYPE_ADD = 'addFeature';
 const EDIT_TYPE_CLEAR = 'clearFeatures';
@@ -78,27 +77,14 @@ export default class SelectionLayer extends CompositeLayer {
       ? coordinates.map(poly => poly.map(p => ([p[0], -p[1]])))
       : coordinates);
 
-    // Convert the selection to a turf polygon object.
-    const selectedPolygon = turfPolygon(flippedCoordinates);
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-    flippedCoordinates[0].forEach(([x, y]) => {
-      minX = Math.min(minX, x);
-      minY = Math.min(minY, y);
-      maxX = Math.max(maxX, x);
-      maxY = Math.max(maxY, y);
-    });
+    const [minX, minY, maxX, maxY] = getRingsBounds(flippedCoordinates);
+    const isPointInSelection = createPointInPolygonTest(flippedCoordinates);
 
-    // quadtree.visit() takes a callback that returns a boolean:
-    // If true returned, then the children of the node are _not_ visited.
-    // If false returned, then the children of the node are visited.
-    // Reference: https://github.com/d3/d3-quadtree#quadtree_visit
     obsLayers.forEach((obsLayer) => {
       const {
         getObsCoords,
         obsQuadTree,
+        obsCount,
         obsIndex,
         onSelect: layerOnSelect,
       } = obsLayer;
@@ -107,35 +93,49 @@ export default class SelectionLayer extends CompositeLayer {
       // Clear the array before checking each new layer.
       const pickingIds = [];
       const pickingPositions = [];
-
-      // It is possible for a layer to not have an obsQuadTree,
-      // for example if the layer is a segmentation bitmask without associated
-      // obsLocations.
-      obsQuadTree?.visit((node, x0, y0, x1, y1) => {
-        // Reject only nodes outside the lasso's bounding box. Polygon intersections
-        // at every node are far costlier than testing the candidate points directly.
-        // Keep touching boxes so points on the lasso boundary remain selectable.
-        if (x0 > maxX || y0 > maxY || x1 < minX || y1 < minY) {
-          return true;
+      const addIfSelected = (obsI) => {
+        const [x, y] = getObsCoords(obsI);
+        if (x >= minX && x <= maxX && y >= minY && y <= maxY
+          && isPointInSelection(x, y)) {
+          pickingIds.push(obsIndex[obsI]);
+          pickingPositions.push(obsI);
         }
+      };
 
-        // Check if this is a leaf node.
-        if (!node.length) {
-          let current = node;
-          while (current) {
-            const [x, y] = getObsCoords(current.data);
-            if (booleanPointInPolygon([x, y], selectedPolygon)) {
-              pickingIds.push(obsIndex[current.data]);
-              pickingPositions.push(current.data);
-            }
-            current = current.next;
+      if (obsQuadTree) {
+        // quadtree.visit() takes a callback that returns a boolean:
+        // If true returned, then the children of the node are _not_ visited.
+        // If false returned, then the children of the node are visited.
+        // Reference: https://github.com/d3/d3-quadtree#quadtree_visit
+        obsQuadTree.visit((node, x0, y0, x1, y1) => {
+          // Reject only nodes outside the lasso's bounding box. Polygon intersections
+          // at every node are far costlier than testing the candidate points directly.
+          // Keep touching boxes so points on the lasso boundary remain selectable.
+          if (x0 > maxX || y0 > maxY || x1 < minX || y1 < minY) {
+            return true;
           }
+          // Check if this is a leaf node.
+          if (!node.length) {
+            let current = node;
+            while (current) {
+              addIfSelected(current.data);
+              current = current.next;
+            }
+          }
+          // Return false because we are not done.
+          // We want to visit the children of this node.
+          return false;
+        });
+      } else if (obsCount) {
+        // Without a prebuilt quadtree, scanning every observation once is much
+        // cheaper than building a tree for a single selection.
+        for (let obsI = 0; obsI < obsCount; obsI += 1) {
+          addIfSelected(obsI);
         }
+      }
+      // It is possible for a layer to have neither, for example if the layer
+      // is a segmentation bitmask without associated obsLocations.
 
-        // Return false because we are not done.
-        // We want to visit the children of this node.
-        return false;
-      });
       // The positions are already known here, so record them for the color
       // encoding instead of having it look up every selected ID again.
       setObsPositions(pickingIds, obsIndex, pickingPositions);

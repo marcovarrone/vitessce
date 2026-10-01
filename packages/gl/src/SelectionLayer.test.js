@@ -72,6 +72,31 @@ describe('SelectionLayer polygon selection', () => {
     expect(missing.onSelect).toHaveBeenCalledWith([]);
   });
 
+  it('scans every observation when a layer provides a count instead of a quadtree', () => {
+    const points = [[1, 1], [0, 0], [2, 1], [1, 2], [1, 0], [0, 1], [3, 3], [1, 1], [-5, 4]];
+    const polygons = [
+      [[[0, 0], [2, 0], [2, 2], [0, 2], [0, 0]]],
+      [
+        [[0, 0], [3, 0], [3, 3], [0, 3], [0, 0]],
+        [[0.5, 0.5], [1.5, 0.5], [1.5, 1.5], [0.5, 1.5], [0.5, 0.5]],
+      ],
+    ];
+    polygons.forEach((coordinates) => {
+      [false, true].forEach((flipY) => {
+        const withTree = makeObsLayer(points);
+        const withCount = { ...makeObsLayer(points), obsQuadTree: null, obsCount: points.length };
+        const layer = new SelectionLayer({ id: 'test', obsLayers: [withTree, withCount], flipY });
+        // eslint-disable-next-line no-underscore-dangle
+        layer._selectPolygonObjects(coordinates);
+        const [fromTree] = withTree.onSelect.mock.calls[0];
+        const [fromCount] = withCount.onSelect.mock.calls[0];
+        expect(new Set(fromCount)).toEqual(new Set(fromTree));
+        const positions = getObsPositions(fromCount, withCount.obsIndex);
+        expect(Array.from(positions, i => withCount.obsIndex[i])).toEqual(fromCount);
+      });
+    });
+  });
+
   it('records the positions of the selected observations for the color encoding', () => {
     const obsLayer = makeObsLayer([[5, 5], [1, 1], [9, 9], [1, 0]]);
     const layer = new SelectionLayer({ id: 'test', obsLayers: [obsLayer] });

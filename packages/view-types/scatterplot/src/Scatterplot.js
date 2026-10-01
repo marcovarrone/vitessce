@@ -9,8 +9,11 @@ import {
 import { getDefaultColor } from '@vitessce/utils';
 import { ViewType } from '@vitessce/constants-internal';
 import {
-  AbstractSpatialOrScatterplot, createQuadTree, forceCollideRects, getOnHoverCallback,
+  AbstractSpatialOrScatterplot, forceCollideRects, getOnHoverCallback,
 } from './shared-spatial-scatterplot/index.js';
+import {
+  makeColorIndicesGetCellColors, makeColorIndicesBuffer, makeIsSelectedBuffer,
+} from './color-buffers.js';
 
 const CELLS_LAYER_ID = 'scatterplot';
 const LABEL_FONT_FAMILY = "-apple-system, 'Helvetica Neue', Arial, sans-serif";
@@ -27,39 +30,11 @@ const TEXT_LAYER_Z_INDEX = 0;
 // certain zoom levels.
 const POINT_LAYER_Z_INDEX = 0;
 
-// The gray that set colors are mixed toward as confidence drops. Must match the
-// mixing color used by treeToCellColorsBySetNames in @vitessce/sets-utils.
-const UNCERTAINTY_MIXING_COLOR = 128;
-
 // Default getter function props.
 const makeDefaultGetCellColors = (cellColors, obsIndex, theme) => (object, { index }) => {
   const [r, g, b, a] = (cellColors && obsIndex && cellColors.get(obsIndex[index]))
     || getDefaultColor(theme);
   return [r, g, b, 255 * (a || 1)];
-};
-// Positional equivalent of makeDefaultGetCellColors, for callers that supply
-// obsColorIndices. Reads a typed array by index rather than hashing an
-// observation ID string on every point.
-const makeColorIndicesGetCellColors = (obsColorIndices, theme) => {
-  const { colorIndices, colorProbs, colors } = obsColorIndices;
-  const defaultColor = getDefaultColor(theme);
-  return (object, { index }) => {
-    const colorIndex = colorIndices[index];
-    if (colorIndex === 0) {
-      return [defaultColor[0], defaultColor[1], defaultColor[2], 255];
-    }
-    const color = colors[colorIndex - 1] || defaultColor;
-    if (colorProbs) {
-      const p = colorProbs[index];
-      return [
-        ((color[0] - UNCERTAINTY_MIXING_COLOR) * p) + UNCERTAINTY_MIXING_COLOR,
-        ((color[1] - UNCERTAINTY_MIXING_COLOR) * p) + UNCERTAINTY_MIXING_COLOR,
-        ((color[2] - UNCERTAINTY_MIXING_COLOR) * p) + UNCERTAINTY_MIXING_COLOR,
-        255,
-      ];
-    }
-    return [color[0], color[1], color[2], 255];
-  };
 };
 const makeDefaultGetObsCoords = obsEmbedding => i => ([
   obsEmbedding.data[0][i],
@@ -131,7 +106,7 @@ class Scatterplot extends AbstractSpatialOrScatterplot {
     // in React state, this component
     // uses instance variables.
     // All instance variables used in this class:
-    this.cellsQuadTree = null;
+    this.binaryAttributes = {};
     this.cellsLayer = null;
     this.cellsData = null;
     this.stratifiedData = null;
@@ -289,6 +264,30 @@ class Scatterplot extends AbstractSpatialOrScatterplot {
       geneExpressionColormapRange = [0.0, 1.0],
       cellColorEncoding,
     } = this.props;
+    // At millions of points, deck.gl calling an accessor and normalizing its
+    // value per point takes hundreds of milliseconds after every selection.
+    // Filling typed arrays directly is an order of magnitude faster, and deck.gl
+    // uses data.attributes as-is. The data object itself is kept, so positions
+    // are not recomputed.
+    if (this.cellsData) {
+      const numObs = this.cellsData.length;
+      const attributes = {};
+      if (obsColorIndices && !this.props.getCellColor) {
+        const colorBuffer = this.getBinaryAttribute(
+          'colors', [obsColorIndices, theme, numObs],
+          () => makeColorIndicesBuffer(obsColorIndices, theme, numObs),
+        );
+        attributes.getFillColor = colorBuffer;
+        attributes.getLineColor = colorBuffer;
+      }
+      if (getCellIsSelected) {
+        attributes.getCellIsSelected = this.getBinaryAttribute(
+          'isSelected', [getCellIsSelected, numObs],
+          () => makeIsSelectedBuffer(getCellIsSelected, numObs),
+        );
+      }
+      this.cellsData.attributes = attributes;
+    }
     return new deck.ScatterplotLayer({
       id: CELLS_LAYER_ID,
       // Note that the reference for the object passed to the data prop should not change,
@@ -420,11 +419,10 @@ class Scatterplot extends AbstractSpatialOrScatterplot {
         {
           getObsCoords: getCellCoords,
           obsIndex,
-          // The selection layer only visits the quadtree once a selection is
-          // drawn, so it is built on first use rather than per embedding change.
-          obsQuadTree: {
-            visit: callback => this.getCellsQuadTree()?.visit(callback),
-          },
+          // A single selection is cheaper to test by scanning every point than
+          // by first building a quadtree, which takes about a second at
+          // millions of points.
+          obsCount: obsEmbedding?.shape[1] ?? 0,
           onSelect: (obsIds) => {
             setCellSelection(obsIds);
           },
@@ -452,25 +450,25 @@ class Scatterplot extends AbstractSpatialOrScatterplot {
   }
 
   /**
-   * The quadtree over the embedding coordinates, used for lasso and rectangle
-   * selection. Built lazily: at millions of points it costs about a second, and
-   * most renders never select.
-   * @returns {object|null} The d3-quadtree, or null without embedding data.
+   * Get a typed array for data.attributes, rebuilt only when its inputs change.
+   * @param {string} name Cache key.
+   * @param {any[]} inputs Values the array depends on, compared by reference.
+   * @param {function} build Builds the array.
+   * @returns {TypedArray}
    */
-  getCellsQuadTree() {
-    const { obsEmbedding } = this.props;
-    if (!this.cellsQuadTree && obsEmbedding) {
-      const getCellCoords = makeDefaultGetObsCoords(obsEmbedding);
-      this.cellsQuadTree = createQuadTree(obsEmbedding, getCellCoords);
+  getBinaryAttribute(name, inputs, build) {
+    const cached = this.binaryAttributes[name];
+    if (cached && cached.inputs.every((value, i) => value === inputs[i])) {
+      return cached.value;
     }
-    return this.cellsQuadTree;
+    const value = build();
+    this.binaryAttributes[name] = { inputs, value };
+    return value;
   }
 
   onUpdateCellsData() {
     const { obsEmbedding } = this.props;
     if (obsEmbedding) {
-      // Invalidate the lazily built quadtree for the previous embedding.
-      this.cellsQuadTree = null;
       this.cellsData = {
         src: {
           obsEmbedding,
