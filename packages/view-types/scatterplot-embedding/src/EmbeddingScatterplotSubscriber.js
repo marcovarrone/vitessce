@@ -308,10 +308,6 @@ export function EmbeddingScatterplotSubscriber(props) {
 
   const [originalViewState, setOriginalViewState] = useState(null);
 
-  const mergedCellSets = useMemo(() => mergeObsSets(
-    cellSets, additionalCellSets,
-  ), [cellSets, additionalCellSets]);
-
   const setCellSelectionProp = useCallback((v) => {
     setObsSelection(
       v, additionalCellSets, cellSetColor,
@@ -327,9 +323,22 @@ export function EmbeddingScatterplotSubscriber(props) {
   // initiated the change paints immediately — and re-render this view afterwards.
   // The urgent render sees the previous values, so the memos below keep their
   // cached results and cost nothing in that first commit.
-  const deferredCellSetSelection = useDeferredValue(cellSetSelection);
-  const deferredCellSetColor = useDeferredValue(cellSetColor);
+  // A lasso selection updates the additional sets, selection and colors at once,
+  // so they are deferred as one snapshot. Deferring them separately would re-encode
+  // every observation twice: first with the new sets but the previous selection.
+  const cellSetsSnapshot = useMemo(() => ({
+    additionalCellSets, cellSetSelection, cellSetColor,
+  }), [additionalCellSets, cellSetSelection, cellSetColor]);
+  const {
+    additionalCellSets: deferredAdditionalCellSets,
+    cellSetSelection: deferredCellSetSelection,
+    cellSetColor: deferredCellSetColor,
+  } = useDeferredValue(cellSetsSnapshot);
   const deferredSampleSetSelection = useDeferredValue(sampleSetSelection);
+
+  const mergedCellSets = useMemo(() => mergeObsSets(
+    cellSets, deferredAdditionalCellSets,
+  ), [cellSets, deferredAdditionalCellSets]);
 
   // Positional rather than keyed by observation ID: at atlas scale an ID-keyed color
   // Map costs one string hash lookup per point per render, plus a per-observation

@@ -259,10 +259,6 @@ export function GatingSubscriber(props) {
 
   const [originalViewState, setOriginalViewState] = useState(null);
 
-  const mergedCellSets = useMemo(() => mergeObsSets(
-    cellSets, additionalCellSets,
-  ), [cellSets, additionalCellSets]);
-
   const setCellSelectionProp = useCallback((v) => {
     setObsSelection(
       v, additionalCellSets, cellSetColor,
@@ -276,8 +272,21 @@ export function GatingSubscriber(props) {
   // below, which at atlas scale takes longer than a frame. Deferring these values
   // lets React commit the urgent update first — the sets manager checkbox that
   // initiated the change paints immediately — and re-render this view afterwards.
-  const deferredCellSetSelection = useDeferredValue(cellSetSelection);
-  const deferredCellSetColor = useDeferredValue(cellSetColor);
+  // A lasso selection updates the additional sets, selection and colors at once,
+  // so they are deferred as one snapshot. Deferring them separately would re-encode
+  // every observation twice: first with the new sets but the previous selection.
+  const cellSetsSnapshot = useMemo(() => ({
+    additionalCellSets, cellSetSelection, cellSetColor,
+  }), [additionalCellSets, cellSetSelection, cellSetColor]);
+  const {
+    additionalCellSets: deferredAdditionalCellSets,
+    cellSetSelection: deferredCellSetSelection,
+    cellSetColor: deferredCellSetColor,
+  } = useDeferredValue(cellSetsSnapshot);
+
+  const mergedCellSets = useMemo(() => mergeObsSets(
+    cellSets, deferredAdditionalCellSets,
+  ), [cellSets, deferredAdditionalCellSets]);
 
   // Positional rather than keyed by observation ID: at atlas scale an ID-keyed color
   // Map costs one string hash lookup per point per render, plus a per-observation
