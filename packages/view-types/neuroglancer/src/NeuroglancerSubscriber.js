@@ -32,7 +32,7 @@ import {
   COMPONENT_COORDINATION_TYPES,
 } from '@vitessce/constants-internal';
 import { Chip } from '@vitessce/styles';
-import { mergeObsSets, getCellColors, setObsSelection } from '@vitessce/sets-utils';
+import { mergeObsSets, getCellColors } from '@vitessce/sets-utils';
 import { MultiLegend } from '@vitessce/legend';
 import { NeuroglancerComp } from './Neuroglancer.js';
 import { useNeuroglancerViewerState, pointsHaveMatchingSegmentation } from './data-hook-ng-utils.js';
@@ -155,7 +155,6 @@ export function NeuroglancerSubscriber(props) {
     spatialRotationOrbit,
     // spatialOrbitAxis, // always along Y-axis - not used in conversion
     embeddingType: mapping,
-    obsSetColor: cellSetColor,
     obsSetSelection: cellSetSelection,
     additionalObsSets: additionalCellSets,
     obsHighlight: cellHighlight,
@@ -163,10 +162,6 @@ export function NeuroglancerSubscriber(props) {
     spatialRenderingMode,
   }, {
     setSpatialCameraSnapshot,
-    setAdditionalObsSets: setAdditionalCellSets,
-    setObsSetColor: setCellSetColor,
-    setObsColorEncoding: setCellColorEncoding,
-    setObsSetSelection: setCellSetSelection,
     setObsHighlight: setCellHighlight,
   }] = useCoordination(
     COMPONENT_COORDINATION_TYPES[ViewType.NEUROGLANCER],
@@ -1065,33 +1060,6 @@ export function NeuroglancerSubscriber(props) {
     if (!detailMode) updateVisibleSegmentsThrottledRef.current?.();
   }, [setSpatialCameraSnapshot, detailMode, cameraZoomFactor]);
 
-  const onSegmentClick = useCallback((value) => {
-    // Note: this callback is no longer called by the child component.
-    // Reference: https://github.com/vitessce/vitessce/pull/2439
-    if (value) {
-      const id = String(value);
-      const selectedCellIds = [id];
-      const alreadySelectedId = cellSetSelection?.flat()?.some(sel => sel.includes(id));
-      // Don't create new selection from same ids
-      if (alreadySelectedId) {
-        return;
-      }
-      // TODO: update this now that we are using layer/channel-based organization of segmentations.
-      // There is no more "top-level" obsSets coordination; it is only on a per-layer basis.
-      // We should probably just assume the first segmentation layer/channel when updating the logic,
-      // since it is not clear how we would determine which layer/channel to update if there are multiple.
-      setObsSelection(
-        selectedCellIds, additionalCellSets, cellSetColor,
-        setCellSetSelection, setAdditionalCellSets, setCellSetColor,
-        setCellColorEncoding,
-        'Selection ',
-        `: based on selected segments ${value}`,
-      );
-    }
-  }, [additionalCellSets, cellSetColor, setAdditionalCellSets,
-    setCellColorEncoding, setCellSetColor, setCellSetSelection,
-  ]);
-
   // Get the ultimate cellColorMapping for each layer to pass to NeuroglancerComp as a prop.
 
   const cellColorMappingByLayer = useMemo(() => {
@@ -1491,7 +1459,6 @@ export function NeuroglancerSubscriber(props) {
 
           <NeuroglancerComp
             classes={classes}
-            onSegmentClick={onSegmentClick}
             onSelectHoveredCoords={detailMode ? undefined : onSegmentHighlight}
             viewerState={derivedViewerState}
             cellColorMapping={cellColorMappingByLayer}

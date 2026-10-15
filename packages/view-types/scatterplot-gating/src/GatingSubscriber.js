@@ -24,7 +24,7 @@ import {
   useCoordinationScopes,
 } from '@vitessce/vit-s';
 import {
-  getCellSetPolygons, mergeObsSets, setObsSelection, treeToColorIndicesArray,
+  getCellSetPolygons, mergeObsSets, createObsSetActions, treeToColorIndicesArray,
   colorIndicesFromCodes,
 } from '@vitessce/sets-utils';
 import {
@@ -263,14 +263,16 @@ export function GatingSubscriber(props) {
     cellSets, additionalCellSets,
   ), [cellSets, additionalCellSets]);
 
-  const setCellSelectionProp = useCallback((v) => {
-    setObsSelection(
-      v, additionalCellSets, cellSetColor,
-      setCellSetSelection, setAdditionalCellSets, setCellSetColor,
-      setCellColorEncoding,
-    );
-  }, [additionalCellSets, cellSetColor, setCellColorEncoding,
-    setAdditionalCellSets, setCellSetColor, setCellSetSelection]);
+  const obsSetActions = useMemo(() => createObsSetActions(
+    { additionalObsSets: additionalCellSets, obsSetColor: cellSetColor },
+    {
+      setAdditionalObsSets: setAdditionalCellSets,
+      setObsSetColor: setCellSetColor,
+      setObsSetSelection: setCellSetSelection,
+      setObsColorEncoding: setCellColorEncoding,
+    },
+  ), [additionalCellSets, cellSetColor, setAdditionalCellSets, setCellSetColor,
+    setCellSetSelection, setCellColorEncoding]);
 
   // A set selection or color change re-encodes every observation in the memos
   // below, which at atlas scale takes longer than a frame. Deferring these values
@@ -510,7 +512,7 @@ export function GatingSubscriber(props) {
         cellSetLabelsVisible={cellSetLabelsVisible}
         cellSetPolygonsVisible={cellSetPolygonsVisible}
         setCellFilter={setCellFilter}
-        setCellSelection={setCellSelectionProp}
+        setCellSelection={obsSetActions.selectObs}
         setCellHighlight={setCellHighlight}
         cellRadius={cellRadius}
         cellOpacity={cellOpacity}

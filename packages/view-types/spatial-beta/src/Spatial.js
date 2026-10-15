@@ -9,7 +9,7 @@ import {
 import { filterSelection } from '@vitessce/spatial-utils';
 import { PALETTE, getDefaultColor } from '@vitessce/utils';
 import {
-  setObsSelection as setObsSelectionHelper,
+  createObsSetActions,
   treeToCellSetColorIndicesBySetNames,
   mergeObsSets,
   getCellColors,
@@ -981,24 +981,10 @@ class Spatial extends AbstractSpatialOrScatterplot {
             obsQuadTree: {
               visit: callback => this.getObsSpotsQuadTree(layerScope)?.visit(callback),
             },
-            onSelect: (obsIds) => {
-              const {
-                obsSetColor,
-                additionalObsSets,
-              } = spotLayerCoordination?.[0]?.[layerScope] || {};
-              const {
-                setObsSetSelection,
-                setObsColorEncoding,
-                setObsSetColor,
-                setAdditionalObsSets,
-              } = spotLayerCoordination?.[1]?.[layerScope] || {};
-
-              setObsSelectionHelper(
-                obsIds, additionalObsSets, obsSetColor,
-                setObsSetSelection, setAdditionalObsSets, setObsSetColor,
-                setObsColorEncoding,
-              );
-            },
+            onSelect: obsIds => createObsSetActions(
+              spotLayerCoordination?.[0]?.[layerScope] || {},
+              spotLayerCoordination?.[1]?.[layerScope] || {},
+            ).selectObs(obsIds),
           })),
         ...segmentationLayerScopes
           .filter(layerScope => (
@@ -1020,24 +1006,10 @@ class Spatial extends AbstractSpatialOrScatterplot {
                 visit: callback => this
                   .getObsSegmentationsQuadTree(layerScope, channelScope)?.visit(callback),
               },
-              onSelect: (obsIds) => {
-                const {
-                  obsSetColor,
-                  additionalObsSets,
-                } = segmentationChannelCoordination?.[0]?.[layerScope]?.[channelScope] || {};
-                const {
-                  setObsSetSelection,
-                  setObsColorEncoding,
-                  setObsSetColor,
-                  setAdditionalObsSets,
-                } = segmentationChannelCoordination?.[1]?.[layerScope]?.[channelScope] || {};
-
-                setObsSelectionHelper(
-                  obsIds, additionalObsSets, obsSetColor,
-                  setObsSetSelection, setAdditionalObsSets, setObsSetColor,
-                  setObsColorEncoding,
-                );
-              },
+              onSelect: obsIds => createObsSetActions(
+                segmentationChannelCoordination?.[0]?.[layerScope]?.[channelScope] || {},
+                segmentationChannelCoordination?.[1]?.[layerScope]?.[channelScope] || {},
+              ).selectObs(obsIds),
             }))),
       ],
       false,

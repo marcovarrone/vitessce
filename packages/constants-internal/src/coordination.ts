@@ -415,6 +415,7 @@ export const COMPONENT_COORDINATION_TYPES = {
     CoordinationType.OBS_SET_EXPANSION,
     CoordinationType.OBS_SET_HIGHLIGHT,
     CoordinationType.OBS_SET_COLOR,
+    CoordinationType.OBS_COLOR_ENCODING,
     CoordinationType.ADDITIONAL_OBS_SETS,
   ],
   [ViewType.STATUS]: [
@@ -694,6 +695,7 @@ export const COMPONENT_COORDINATION_TYPES = {
     CoordinationType.OBS_SET_SELECTION,
     CoordinationType.ADDITIONAL_OBS_SETS,
     CoordinationType.OBS_SET_COLOR,
+    CoordinationType.OBS_COLOR_ENCODING,
     CoordinationType.SAMPLE_SET_COLOR,
   ],
   [ViewType.FEATURE_SET_ENRICHMENT_BAR_PLOT]: [

@@ -10,7 +10,7 @@ import {
   useCoordinationScopes,
 } from '@vitessce/vit-s';
 import { ViewType, COMPONENT_COORDINATION_TYPES, ViewHelpMapping } from '@vitessce/constants-internal';
-import { setObsSelection, getObsInfoFromDataWithinRange } from '@vitessce/sets-utils';
+import { createObsSetActions, getObsInfoFromDataWithinRange } from '@vitessce/sets-utils';
 import { aggregateFeatureArrays } from '@vitessce/utils';
 import ExpressionHistogram from './ExpressionHistogram.js';
 import { useStyles } from './styles.js';
@@ -140,13 +140,17 @@ export function ExpressionHistogramSubscriber(props) {
     );
 
     const selectedCellIds = getObsInfoFromDataWithinRange(value, data);
-    setObsSelection(
-      selectedCellIds, additionalCellSets, cellSetColor,
-      setCellSetSelection, setAdditionalCellSets, setCellSetColor,
-      setCellColorEncoding,
-      'Selection ',
-      `: based on ${geneName} in range [${value[0].toFixed(1)}, ${value[1].toFixed(1)}] `,
-    );
+    createObsSetActions(
+      { additionalObsSets: additionalCellSets, obsSetColor: cellSetColor },
+      {
+        setAdditionalObsSets: setAdditionalCellSets,
+        setObsSetColor: setCellSetColor,
+        setObsSetSelection: setCellSetSelection,
+        setObsColorEncoding: setCellColorEncoding,
+      },
+    ).selectObs(selectedCellIds, {
+      suffix: `: based on ${geneName} in range [${value[0].toFixed(1)}, ${value[1].toFixed(1)}] `,
+    });
   }, [additionalCellSets, cellSetColor, data, setAdditionalCellSets,
     setCellColorEncoding, setCellSetColor, setCellSetSelection,
     numGenesSelected, aggregationStrategy, geneSelection,

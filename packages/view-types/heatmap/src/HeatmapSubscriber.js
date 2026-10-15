@@ -19,7 +19,9 @@ import {
   useCoordinationScopes,
 } from '@vitessce/vit-s';
 import { pluralize as plur, capitalize, commaNumber, cleanFeatureId } from '@vitessce/utils';
-import { mergeObsSets, findLongestCommonPath, getCellColors } from '@vitessce/sets-utils';
+import {
+  mergeObsSets, findLongestCommonPath, getCellColors, createObsSetActions,
+} from '@vitessce/sets-utils';
 import { COMPONENT_COORDINATION_TYPES, ViewType, ViewHelpMapping } from '@vitessce/constants-internal';
 import { Legend } from '@vitessce/legend';
 import Heatmap from './Heatmap.js';
@@ -87,6 +89,7 @@ export function HeatmapSubscriber(props) {
     setFeatureHighlight: setGeneHighlight,
     setObsSetSelection: setCellSetSelection,
     setObsSetColor: setCellSetColor,
+    setAdditionalObsSets: setAdditionalCellSets,
     setFeatureValueColormapRange: setGeneExpressionColormapRange,
     setFeatureValueColormap: setGeneExpressionColormap,
     setTooltipsVisible,
@@ -215,8 +218,15 @@ export function HeatmapSubscriber(props) {
       if (selectionFullPath?.length > 0) {
         const selectionToHighlight = findLongestCommonPath(selectionFullPath, cellSetSelection);
         if (selectionToHighlight) {
-          setCellSetSelection([selectionToHighlight]);
-          setCellColorEncoding('cellSelection');
+          createObsSetActions(
+            { additionalObsSets: additionalCellSets, obsSetColor: cellSetColor },
+            {
+              setAdditionalObsSets: setAdditionalCellSets,
+              setObsSetColor: setCellSetColor,
+              setObsSetSelection: setCellSetSelection,
+              setObsColorEncoding: setCellColorEncoding,
+            },
+          ).selectSets([selectionToHighlight]);
         }
       }
     }

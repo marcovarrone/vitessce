@@ -31,7 +31,7 @@ import {
 import { aggregateFeatureArrays, getAnnotationFrameCoordinationValues } from '@vitessce/utils';
 import { useAnnotationFrameTransition } from '@vitessce/scatterplot';
 import {
-  setObsSelection,
+  createObsSetActions,
   mergeObsSets,
   colorArrayToString,
   getCellColors,
@@ -434,14 +434,16 @@ export function SpatialSubscriber(props) {
     cellSets, additionalCellSets,
   ), [cellSets, additionalCellSets]);
 
-  const setCellSelectionProp = useCallback((v) => {
-    setObsSelection(
-      v, additionalCellSets, cellSetColor,
-      setCellSetSelection, setAdditionalCellSets, setCellSetColor,
-      setCellColorEncoding,
-    );
-  }, [additionalCellSets, cellSetColor, setCellColorEncoding,
-    setAdditionalCellSets, setCellSetColor, setCellSetSelection]);
+  const obsSetActions = useMemo(() => createObsSetActions(
+    { additionalObsSets: additionalCellSets, obsSetColor: cellSetColor },
+    {
+      setAdditionalObsSets: setAdditionalCellSets,
+      setObsSetColor: setCellSetColor,
+      setObsSetSelection: setCellSetSelection,
+      setObsColorEncoding: setCellColorEncoding,
+    },
+  ), [additionalCellSets, cellSetColor, setAdditionalCellSets, setCellSetColor,
+    setCellSetSelection, setCellColorEncoding]);
 
   const cellColors = useMemo(() => getCellColors({
     cellSets: mergedCellSets,
@@ -754,7 +756,7 @@ export function SpatialSubscriber(props) {
         neighborhoods={neighborhoods}
         imageLayerLoaders={resolutionFilteredImageLayerLoaders}
         setCellFilter={setCellFilter}
-        setCellSelection={setCellSelectionProp}
+        setCellSelection={obsSetActions.selectObs}
         setCellHighlight={setCellHighlight}
         setHoverInfo={setHoverInfo}
         setMoleculeHighlight={setMoleculeHighlight}

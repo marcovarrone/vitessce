@@ -19,8 +19,6 @@ export class NeuroglancerComp extends PureComponent {
     this.prevHoverHandler = null;
     this.onViewerStateChanged = this.onViewerStateChanged.bind(this);
     this.onRef = this.onRef.bind(this);
-    // To avoid closure for onSegmentClick(), to update the selection
-    this.latestOnSegmentClick = props.onSegmentClick;
     this.latestOnSelectHoveredCoords = props.onSelectHoveredCoords;
     this.state = { bundleRootReady: false };
   }

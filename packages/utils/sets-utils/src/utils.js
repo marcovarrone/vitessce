@@ -1,6 +1,5 @@
 import tinycolor from 'tinycolor2';
 import { isEqual } from 'lodash-es';
-import { PALETTE } from '@vitessce/utils';
 import {
   SETS_DATATYPE_OBS,
   HIERARCHICAL_SCHEMAS,
@@ -74,68 +73,26 @@ export function pathToKey(path) {
 
 // Moved from src/components/utils.js
 
+/**
+ * Get the next unused numbered name, such as "Selection 3".
+ * A name counts as used when it starts with the prefix and number,
+ * not followed by another digit (so "Selection 10" does not use 1).
+ * @param {object[]|undefined} nodes The sibling nodes.
+ * @param {string} prefix The text before the number.
+ * @param {string} suffix The text after the number.
+ * @returns {string} The next name.
+ */
 export function getNextNumberedNodeName(nodes, prefix, suffix) {
+  const isUsed = (name, stem) => name.startsWith(stem) && !/^\d/.test(name.slice(stem.length));
   let i = 1;
   if (nodes) {
     // eslint-disable-next-line no-loop-func
-    while (nodes.find(n => n.name.includes(`${prefix}${i}`))) {
+    while (nodes.find(n => isUsed(n.name, `${prefix}${i}`))) {
       // eslint-disable-next-line no-plusplus
       i++;
     }
   }
   return `${prefix}${i}${suffix}`;
-}
-
-/**
- * Create a new selected cell set based on a cell selection.
- * @param {string[]} cellSelection An array of cell IDs.
- * @param {object[]} additionalCellSets The previous array of user-defined cell sets.
- * @param {function} setCellSetSelection The setter function for cell set selections.
- * @param {function} setAdditionalCellSets The setter function for user-defined cell sets.
- */
-export function setObsSelection(cellSelection, additionalCellSets, cellSetColor, setCellSetSelection, setAdditionalCellSets, setCellSetColor, setCellColorEncoding, prefix = 'Selection ', suffix = '') {
-  const CELL_SELECTIONS_LEVEL_ZERO_NAME = 'My Selections';
-
-  const selectionsLevelZeroNode = additionalCellSets?.tree.find(
-    n => n.name === CELL_SELECTIONS_LEVEL_ZERO_NAME,
-  );
-  const nextAdditionalCellSets = {
-    version: HIERARCHICAL_SCHEMAS.latestVersion,
-    datatype: SETS_DATATYPE_OBS,
-    tree: [...(additionalCellSets ? additionalCellSets.tree : [])],
-  };
-
-  const nextName = getNextNumberedNodeName(selectionsLevelZeroNode?.children, prefix, suffix);
-
-  let colorIndex = 0;
-  if (selectionsLevelZeroNode) {
-    colorIndex = selectionsLevelZeroNode.children.length;
-    selectionsLevelZeroNode.children.push({
-      name: nextName,
-      set: cellSelection.map(d => [d, null]),
-    });
-  } else {
-    nextAdditionalCellSets.tree.push({
-      name: CELL_SELECTIONS_LEVEL_ZERO_NAME,
-      children: [
-        {
-          name: nextName,
-          set: cellSelection.map(d => [d, null]),
-        },
-      ],
-    });
-  }
-  setAdditionalCellSets(nextAdditionalCellSets);
-  const nextPath = ['My Selections', nextName];
-  setCellSetColor([
-    ...(cellSetColor || []),
-    {
-      path: nextPath,
-      color: PALETTE[colorIndex % PALETTE.length],
-    },
-  ]);
-  setCellSetSelection([nextPath]);
-  setCellColorEncoding('cellSetSelection');
 }
 
 export function mergeObsSets(cellSets, additionalCellSets) {

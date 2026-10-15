@@ -46,7 +46,6 @@ export {
   isEqualOrPrefix,
   tryRenamePath,
   PATH_SEP,
-  setObsSelection,
   mergeObsSets,
   getNextNumberedNodeName,
   colorArrayToString,
@@ -87,3 +86,9 @@ export {
   stratifyExpressionData,
   aggregateStratifiedExpressionData,
 } from './expr-utils.js';
+export {
+  createObsSetActions,
+  SELECTION_SETS_GROUP_NAME,
+// The ESLint resolver does not map this .js import to its .ts source (tsc and Vite do).
+// eslint-disable-next-line import/no-unresolved
+} from './obs-set-actions.js';

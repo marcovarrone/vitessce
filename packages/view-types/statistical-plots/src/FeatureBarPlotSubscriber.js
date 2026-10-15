@@ -12,7 +12,7 @@ import {
   useCoordinationScopes,
 } from '@vitessce/vit-s';
 import { ViewType, COMPONENT_COORDINATION_TYPES, ViewHelpMapping } from '@vitessce/constants-internal';
-import { setObsSelection } from '@vitessce/sets-utils';
+import { createObsSetActions } from '@vitessce/sets-utils';
 import FeatureBarPlot from './FeatureBarPlot.js';
 import { useStyles } from './styles.js';
 
@@ -95,12 +95,15 @@ export function FeatureBarPlotSubscriber(props) {
   ]);
 
   const onBarSelect = useCallback((obsId) => {
-    const obsIdsToSelect = [obsId];
-    setObsSelection(
-      obsIdsToSelect, additionalCellSets, cellSetColor,
-      setCellSetSelection, setAdditionalCellSets, setCellSetColor,
-      setCellColorEncoding,
-    );
+    createObsSetActions(
+      { additionalObsSets: additionalCellSets, obsSetColor: cellSetColor },
+      {
+        setAdditionalObsSets: setAdditionalCellSets,
+        setObsSetColor: setCellSetColor,
+        setObsSetSelection: setCellSetSelection,
+        setObsColorEncoding: setCellColorEncoding,
+      },
+    ).selectObs([obsId]);
   }, [additionalCellSets, cellSetColor, setCellColorEncoding,
     setAdditionalCellSets, setCellSetColor, setCellSetSelection]);
 
