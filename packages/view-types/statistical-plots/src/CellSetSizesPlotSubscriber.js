@@ -10,6 +10,7 @@ import { isEqual } from 'lodash-es';
 import { ViewType, COMPONENT_COORDINATION_TYPES, ViewHelpMapping } from '@vitessce/constants-internal';
 import {
   mergeObsSets, treeToSetSizesBySetNames, filterPathsByExpansionAndSelection, findChangedHierarchy,
+  createObsSetActions,
 } from '@vitessce/sets-utils';
 import { capitalize } from '@vitessce/utils';
 import CellSetSizesPlot from './CellSetSizesPlot.js';
@@ -53,7 +54,20 @@ export function CellSetSizesPlotSubscriber(props) {
   }, {
     setObsSetSelection: setCellSetSelection,
     setObsSetColor: setCellSetColor,
+    setObsColorEncoding: setCellColorEncoding,
+    setAdditionalObsSets: setAdditionalCellSets,
   }] = useCoordination(COMPONENT_COORDINATION_TYPES[ViewType.OBS_SET_SIZES], coordinationScopes);
+
+  const obsSetActions = useMemo(() => createObsSetActions(
+    { additionalObsSets: additionalCellSets, obsSetColor: cellSetColor },
+    {
+      setAdditionalObsSets: setAdditionalCellSets,
+      setObsSetColor: setCellSetColor,
+      setObsSetSelection: setCellSetSelection,
+      setObsColorEncoding: setCellColorEncoding,
+    },
+  ), [additionalCellSets, cellSetColor, setAdditionalCellSets, setCellSetColor,
+    setCellSetSelection, setCellColorEncoding]);
 
   const title = titleOverride || `${capitalize(obsType)} Set Sizes`;
 
@@ -124,13 +138,13 @@ export function CellSetSizesPlotSubscriber(props) {
 
   const onBarSelect = (setNamePath, wasGrayedOut, selectOnlyEnabled = false) => {
     if (selectOnlyEnabled) {
-      setCellSetSelection([setNamePath]);
+      obsSetActions.selectSets([setNamePath]);
       return;
     }
     if (!wasGrayedOut) {
-      setCellSetSelection(cellSetSelection.filter(d => !isEqual(d, setNamePath)));
+      obsSetActions.selectSets(cellSetSelection.filter(d => !isEqual(d, setNamePath)));
     } else if (wasGrayedOut) {
-      setCellSetSelection([...cellSetSelection, setNamePath]);
+      obsSetActions.selectSets([...cellSetSelection, setNamePath]);
     }
   };
 

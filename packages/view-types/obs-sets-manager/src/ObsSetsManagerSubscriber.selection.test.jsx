@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render } from '@testing-library/react';
-import { handleImportJSON, setObsSelection } from '@vitessce/sets-utils';
+import { handleImportJSON, createObsSetActions } from '@vitessce/sets-utils';
 import { ObsSetsManagerSubscriber } from './ObsSetsManagerSubscriber.js';
 import SetsManager from './SetsManager.js';
 
@@ -33,9 +33,7 @@ function reset() {
 }
 
 function select(ids) {
-  setObsSelection(ids, state.values.additionalObsSets, state.values.obsSetColor,
-    state.setters.setObsSetSelection, state.setters.setAdditionalObsSets,
-    state.setters.setObsSetColor, state.setters.setObsColorEncoding);
+  createObsSetActions(state.values, state.setters).selectObs(ids);
 }
 
 describe('selection updates in the sets manager', () => {

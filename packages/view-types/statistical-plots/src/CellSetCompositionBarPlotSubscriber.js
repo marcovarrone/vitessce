@@ -11,6 +11,7 @@ import {
   useColumnNameMapping,
   useCoordinationScopes,
 } from '@vitessce/vit-s';
+import { createObsSetActions } from '@vitessce/sets-utils';
 import {
   ViewType,
   COMPONENT_COORDINATION_TYPES,
@@ -117,8 +118,17 @@ export function CellSetCompositionBarPlotSubscriber(props) {
   // Support a click handler which selects individual cell set bars.
   const onBarSelect = useCallback((setNamePath, isShiftDown = false) => {
     // TODO: Implement different behavior when isShiftDown
-    setObsSetSelection([setNamePath]);
-  }, [setObsSetSelection]);
+    createObsSetActions(
+      { additionalObsSets: additionalCellSets, obsSetColor },
+      {
+        setAdditionalObsSets: setAdditionalCellSets,
+        setObsSetColor: setCellSetColor,
+        setObsSetSelection,
+        setObsColorEncoding: setCellColorEncoding,
+      },
+    ).selectSets([setNamePath]);
+  }, [additionalCellSets, obsSetColor, setAdditionalCellSets, setCellSetColor,
+    setObsSetSelection, setCellColorEncoding]);
 
   // TODO: support the following options
   // - Use logFoldChange vs. intercept+effect for the bar y-value.

@@ -42,7 +42,7 @@ import {
 import { COMPONENT_COORDINATION_TYPES, ViewType, CoordinationType, ViewHelpMapping } from '@vitessce/constants-internal';
 import { commaNumber, pluralize, getAnnotationFrameCoordinationValues } from '@vitessce/utils';
 import { useAnnotationFrameTransition } from '@vitessce/scatterplot';
-import { setObsSelection } from '@vitessce/sets-utils';
+import { createObsSetActions } from '@vitessce/sets-utils';
 import { MultiLegend, ChannelNamesLegend } from '@vitessce/legend';
 import Spatial from './Spatial.js';
 import SpatialTooltipSubscriber from './SpatialTooltipSubscriber.js';
@@ -1019,22 +1019,8 @@ export function SpatialSubscriber(props) {
       const channelCoordinationValues = segmentationChannelCoordination[0][layerScope][channelScope];
       const channelCoordinationSetters = segmentationChannelCoordination[1][layerScope][channelScope];
       if (channelCoordinationValues && channelCoordinationSetters) {
-        const {
-          additionalObsSets: channelAdditionalObsSets,
-          obsSetColor: channelObsSetColor,
-        } = channelCoordinationValues;
-        const {
-          setObsSetColor: setChannelObsSetColor,
-          setAdditionalObsSets: setChannelAdditionalObsSets,
-          setObsColorEncoding: setChannelObsColorEncoding,
-          setObsSetSelection: setChannelObsSetSelection,
-        } = channelCoordinationSetters;
-        const obsIdsToSelect = [obsId];
-        setObsSelection(
-          obsIdsToSelect, channelAdditionalObsSets, channelObsSetColor,
-          setChannelObsSetSelection, setChannelAdditionalObsSets, setChannelObsSetColor,
-          setChannelObsColorEncoding,
-        );
+        createObsSetActions(channelCoordinationValues, channelCoordinationSetters)
+          .selectObs([obsId]);
       }
     }
   };

@@ -14,7 +14,9 @@ import {
   useCoordinationScopes,
 } from '@vitessce/vit-s';
 import { ViewType, COMPONENT_COORDINATION_TYPES, ViewHelpMapping } from '@vitessce/constants-internal';
-import { treeToSelectedSetMap, treeToSetSizesBySetNames, mergeObsSets } from '@vitessce/sets-utils';
+import {
+  treeToSelectedSetMap, treeToSetSizesBySetNames, mergeObsSets, createObsSetActions,
+} from '@vitessce/sets-utils';
 import { pluralize as plur, commaNumber, unnestMap, capitalize } from '@vitessce/utils';
 import { InternMap } from 'internmap';
 import { isEqual } from 'lodash-es';
@@ -240,8 +242,12 @@ export function TreemapSubscriber(props) {
 
 
   const onNodeClick = useCallback((obsSetPath) => {
-    setObsSetSelection([obsSetPath]);
-  }, [setObsSetSelection]);
+    createObsSetActions(
+      { additionalObsSets, obsSetColor },
+      { setAdditionalObsSets, setObsSetColor, setObsSetSelection, setObsColorEncoding },
+    ).selectSets([obsSetPath]);
+  }, [additionalObsSets, obsSetColor, setAdditionalObsSets, setObsSetColor,
+    setObsSetSelection, setObsColorEncoding]);
 
   return (
     <TitleInfo
